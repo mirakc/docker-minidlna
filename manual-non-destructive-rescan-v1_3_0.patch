@@ -1,0 +1,230 @@
+diff --git a/minidlna.c b/minidlna.c
+index b2769ae..2c50f16 100644
+--- a/minidlna.c
++++ b/minidlna.c
+@@ -211,6 +211,17 @@ sigusr1(int sig)
+ 	memset(&clients, '\0', sizeof(clients));
+ }
+ 
++static void
++sigusr2(int sig)
++{
++	signal(sig, sigusr2);
++	DPRINTF(E_WARN, L_GENERAL, "received signal %d, manual rescan\n", sig);
++
++	if (!GETFLAG(SCANNING_MASK) &&
++	    !GETFLAG(RESCAN_MASK))
++		SETFLAG(RESCAN_MASK);
++}
++
+ static void
+ sighup(int sig)
+ {
+@@ -915,6 +926,10 @@ init(int argc, char **argv)
+ 			if (system(buf) != 0)
+ 				DPRINTF(E_FATAL, L_GENERAL, "Failed to clean old file cache %s. EXITING\n", db_path);
+ 			break;
++		case 'U':
++			pid = process_check_if_running(pidfilename);
++			DPRINTF(E_INFO, L_GENERAL, "Manual rescan for " SERVER_NAME " %s\n", (pid > 0 && !kill(pid, SIGUSR2)) ? "sent" : "failed");
++			exit(0);
+ 		case 'u':
+ 			if (i+1 != argc)
+ 			{
+@@ -974,9 +989,9 @@ init(int argc, char **argv)
+ 			"\t\t[-t notify_interval] [-P pid_filename]\n"
+ 			"\t\t[-s serial] [-m model_number]\n"
+ #ifdef __linux__
+-			"\t\t[-w url] [-r] [-R] [-L] [-S] [-V] [-h]\n"
++			"\t\t[-w url] [-r] [-R] [-U] [-L] [-S] [-V] [-h]\n"
+ #else
+-			"\t\t[-w url] [-r] [-R] [-L] [-V] [-h]\n"
++			"\t\t[-w url] [-r] [-R] [-U] [-L] [-V] [-h]\n"
+ #endif
+ 			"\nNotes:\n\tNotify interval is in seconds. Default is 895 seconds.\n"
+ 			"\tDefault pid file is %s.\n"
+@@ -984,7 +999,8 @@ init(int argc, char **argv)
+ 			"\t-w sets the presentation url. Default is http address on port 80\n"
+ 			"\t-v enables verbose output\n"
+ 			"\t-h displays this text\n"
+-			"\t-r forces a rescan\n"
++			"\t-r forces a rescan on startup\n"
++			"\t-U forces a rescan while " SERVER_NAME " is running. Use after -P\n"
+ 			"\t-R forces a rebuild\n"
+ 			"\t-L do not create playlists\n"
+ #if defined(__linux__) || defined(__APPLE__)
+@@ -1026,7 +1042,7 @@ init(int argc, char **argv)
+ 		DPRINTF(E_FATAL, L_GENERAL, "Failed to open log file '%s/" LOGFILE_NAME "': %s\n",
+ 			log_path, strerror(errno));
+ 
+-	if (process_check_if_running(pidfilename) < 0)
++	if (process_check_if_running(pidfilename) > 0)
+ 		DPRINTF(E_FATAL, L_GENERAL, SERVER_NAME " is already running. EXITING.\n");
+ 
+ 	set_startup_time();
+@@ -1051,6 +1067,7 @@ init(int argc, char **argv)
+ 	if (signal(SIGUSR2, SIG_IGN) == SIG_ERR)
+ 		DPRINTF(E_FATAL, L_GENERAL, "Failed to set %s handler. EXITING.\n", "SIGUSR2");
+ 	signal(SIGUSR1, &sigusr1);
++	signal(SIGUSR2, &sigusr2);
+ 	sa.sa_handler = process_handle_child_termination;
+ 	if (sigaction(SIGCHLD, &sa, NULL))
+ 		DPRINTF(E_FATAL, L_GENERAL, "Failed to set %s handler. EXITING.\n", "SIGCHLD");
+@@ -1274,6 +1291,7 @@ main(int argc, char **argv)
+ 
+ 		if (GETFLAG(SCANNING_MASK) && kill(scanner_pid, 0) != 0) {
+ 			CLEARFLAG(SCANNING_MASK);
++			CLEARFLAG(RESCAN_MASK);
+ 			if (_get_dbtime() != lastdbtime)
+ 				updateID++;
+ #ifdef HAVE_KQUEUE
+@@ -1281,6 +1299,13 @@ main(int argc, char **argv)
+ 			kqueue_monitor_start();
+ #endif /* HAVE_KQUEUE */
+ 		}
++		if (GETFLAG(RESCAN_MASK) && !GETFLAG(SCANNING_MASK))
++		{
++			if (GETFLAG(MONITOR_MASK))
++				DPRINTF(E_WARN, L_GENERAL, "Waiting for inotify to finish.\n");
++			else
++				check_db(db, -1, &scanner_pid);
++		}
+ 
+ 		event_module.process(timeout);
+ 		if (quitting)
+diff --git a/monitor.c b/monitor.c
+index 9e56bc7..237e738 100644
+--- a/monitor.c
++++ b/monitor.c
+@@ -683,6 +683,12 @@ start_inotify(void)
+ 			buffer[BUF_LEN-1] = '\0';
+ 		}
+ 
++		if (GETFLAG(RESCAN_MASK))
++		{
++			DPRINTF(E_WARN, L_INOTIFY, "Ignoring inotify during rescan.\n");
++			continue;
++		}
++
+ 		i = 0;
+ 		while( !quitting && i < length )
+ 		{
+@@ -698,15 +704,18 @@ start_inotify(void)
+ 				snprintf(path_buf, sizeof(path_buf), "%s/%s", get_path_from_wd(event->wd), event->name);
+ 				if ( event->mask & IN_ISDIR && (event->mask & (IN_CREATE|IN_MOVED_TO)) )
+ 				{
++					SETFLAG(MONITOR_MASK);
+ 					DPRINTF(E_DEBUG, L_INOTIFY,  "The directory %s was %s.\n",
+ 						path_buf, (event->mask & IN_MOVED_TO ? "moved here" : "created"));
+ 					monitor_insert_directory(pollfds[0].fd, esc_name, path_buf);
++					CLEARFLAG(MONITOR_MASK);
+ 				}
+ 				else if ( (event->mask & (IN_CLOSE_WRITE|IN_MOVED_TO|IN_CREATE)) &&
+ 				          (lstat(path_buf, &st) == 0) )
+ 				{
+ 					if( (event->mask & (IN_MOVED_TO|IN_CREATE)) && (S_ISLNK(st.st_mode) || st.st_nlink > 1) )
+ 					{
++						SETFLAG(MONITOR_MASK);
+ 						DPRINTF(E_DEBUG, L_INOTIFY, "The %s link %s was %s.\n",
+ 							(S_ISLNK(st.st_mode) ? "symbolic" : "hard"),
+ 							path_buf, (event->mask & IN_MOVED_TO ? "moved here" : "created"));
+@@ -714,20 +723,24 @@ start_inotify(void)
+ 							monitor_insert_directory(pollfds[0].fd, esc_name, path_buf);
+ 						else
+ 							monitor_insert_file(esc_name, path_buf);
++						CLEARFLAG(MONITOR_MASK);
+ 					}
+ 					else if( event->mask & (IN_CLOSE_WRITE|IN_MOVED_TO) && st.st_size > 0 )
+ 					{
+ 						if( (event->mask & IN_MOVED_TO) ||
+ 						    (sql_get_int_field(db, "SELECT TIMESTAMP from DETAILS where PATH = '%q'", path_buf) != st.st_mtime) )
+ 						{
++							SETFLAG(MONITOR_MASK);
+ 							DPRINTF(E_DEBUG, L_INOTIFY, "The file %s was %s.\n",
+ 								path_buf, (event->mask & IN_MOVED_TO ? "moved here" : "changed"));
+ 							monitor_insert_file(esc_name, path_buf);
++							CLEARFLAG(MONITOR_MASK);
+ 						}
+ 					}
+ 				}
+ 				else if ( event->mask & (IN_DELETE|IN_MOVED_FROM) )
+ 				{
++					SETFLAG(MONITOR_MASK);
+ 					DPRINTF(E_DEBUG, L_INOTIFY, "The %s %s was %s.\n",
+ 						(event->mask & IN_ISDIR ? "directory" : "file"),
+ 						path_buf, (event->mask & IN_MOVED_FROM ? "moved away" : "deleted"));
+@@ -735,6 +748,7 @@ start_inotify(void)
+ 						monitor_remove_directory(pollfds[0].fd, path_buf);
+ 					else
+ 						monitor_remove_file(path_buf);
++					CLEARFLAG(MONITOR_MASK);
+ 				}
+ 				free(esc_name);
+ 			}
+diff --git a/process.c b/process.c
+index abb777b..2cb8046 100644
+--- a/process.c
++++ b/process.c
+@@ -179,7 +179,7 @@ process_check_if_running(const char *fname)
+ {
+ 	char buffer[64];
+ 	int pidfile;
+-	pid_t pid;
++	pid_t pid = 0;
+ 
+ 	if(!fname || *fname == '\0')
+ 		return -1;
+@@ -193,17 +193,13 @@ process_check_if_running(const char *fname)
+ 	{
+ 		if( (pid = atol(buffer)) > 0)
+ 		{
+-			if(!kill(pid, 0))
+-			{
+-				close(pidfile);
+-				return -2;
+-			}
++			pid = !kill(pid, 0) ? pid : -2;
+ 		}
+ 	}
+ 
+ 	close(pidfile);
+ 
+-	return 0;
++	return (int) pid;
+ }
+ 
+ void
+diff --git a/upnpglobalvars.c b/upnpglobalvars.c
+index 1625bdb..c6e699e 100644
+--- a/upnpglobalvars.c
++++ b/upnpglobalvars.c
+@@ -58,7 +58,7 @@
+ time_t startup_time = 0;
+ 
+ struct runtime_vars_s runtime_vars;
+-uint32_t runtime_flags = INOTIFY_MASK | TIVO_BONJOUR_MASK | SUBTITLES_MASK;
++volatile uint32_t runtime_flags = INOTIFY_MASK | TIVO_BONJOUR_MASK | SUBTITLES_MASK;
+ 
+ const char *pidfilename = "/var/run/minidlna/minidlna.pid";
+ 
+diff --git a/upnpglobalvars.h b/upnpglobalvars.h
+index 92596e7..8546ffc 100644
+--- a/upnpglobalvars.h
++++ b/upnpglobalvars.h
+@@ -187,7 +187,7 @@ extern time_t startup_time;
+ 
+ extern struct runtime_vars_s runtime_vars;
+ /* runtime boolean flags */
+-extern uint32_t runtime_flags;
++extern volatile uint32_t runtime_flags;
+ #define INOTIFY_MASK          0x0001
+ #define TIVO_MASK             0x0002
+ #define DLNA_STRICT_MASK      0x0004
+@@ -204,6 +204,7 @@ extern uint32_t runtime_flags;
+ #define RESCAN_MASK           0x0200
+ #define SUBTITLES_MASK        0x0400
+ #define FORCE_ALPHASORT_MASK  0x0800
++#define MONITOR_MASK          0x1000
+ 
+ #define SETFLAG(mask)	runtime_flags |= mask
+ #define GETFLAG(mask)	(runtime_flags & mask)
