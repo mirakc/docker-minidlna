@@ -51,7 +51,7 @@ RUN sed -i -E 's|^#?log_level=.*$|log_level=info|' minidlna.conf
 # inotify doesn't work with Docker mounts in some situations:
 # https://github.com/moby/moby/issues/18246
 RUN sed -i -E 's|^#?inotify=.*$|inotify=no|' minidlna.conf
-RUN sed -i -E 's|^#?notify_interval=.*$|notify_interval=60|' minidlna.conf
+RUN sed -i -E 's|^#?notify_interval=.*$|notify_interval=300|' minidlna.conf
 RUN sed -i -E 's|^#?root_container=.*$|root_container=V|' minidlna.conf
 
 FROM alpine:3.12
