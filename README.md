@@ -55,7 +55,6 @@ services:
       - minidlna-cache:/var/cache/minidlna
     environment:
       <<: *default-environment
-      MINIDLNA_REBUILD_INTERVAL: 300  # 5m
 
 volumes:
   minidlna-cache:
@@ -63,7 +62,8 @@ volumes:
     driver: local
 ```
 
-The `dlna` service starts listening on 8200/tcp by default.
+The `dlna` service starts listening on 8200/tcp by default.  The `dlna` service also uses 1900/udp
+for SSDP multicast.
 
 ## How to change /etc/minidlna.conf
 

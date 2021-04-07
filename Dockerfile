@@ -64,6 +64,6 @@ HEALTHCHECK --interval=10s --timeout=10s --retries=6 CMD test -f /var/run/minidl
 VOLUME /var/cache/minidlna
 ENTRYPOINT ["sh", "/entrypoint.sh"]
 CMD []
-ENV MINIDLNA_REBUILD_INTERVAL=60
+ENV MINIDLNA_REBUILD_INTERVAL=300
 EXPOSE 1900/udp
 EXPOSE 8200
