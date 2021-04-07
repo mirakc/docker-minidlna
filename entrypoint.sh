@@ -5,7 +5,7 @@ INTERVAL=${MINIDLNA_REBUILD_INTERVAL:-300}
 [ -f $PIDFILE ] && rm -f $PIDFILE
 
 # Start a minidlnad daemon.
-/usr/local/sbin/minidlnad -d -f /etc/minidlna.conf -P $PIDFILE &
+/usr/local/sbin/minidlnad -f /etc/minidlna.conf -P $PIDFILE
 
 # Rebuild the index periodically.
 while true;
