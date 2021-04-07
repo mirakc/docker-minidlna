@@ -59,10 +59,10 @@ LABEL maintainer="Contributors of mirakc"
 RUN apk add --no-cache jpeg ffmpeg-libs flac libexif libid3tag libintl libvorbis sqlite-libs tzdata
 COPY --from=minidlna-build /usr/local /usr/local/
 COPY --from=minidlna-build /build/minidlna.conf /etc/
-COPY ./entrypoint.sh /
+COPY ./run-minidlna /
 HEALTHCHECK --interval=10s --timeout=10s --retries=5 CMD test -f /var/run/minidlna/minidlna.pid
 VOLUME /var/cache/minidlna
-ENTRYPOINT ["sh", "/entrypoint.sh"]
+ENTRYPOINT ["/run-minidlna"]
 CMD []
 ENV MINIDLNA_REBUILD_INTERVAL=300
 EXPOSE 1900/udp

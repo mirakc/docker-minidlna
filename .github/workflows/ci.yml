@@ -20,7 +20,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: /tmp/.docker-cache
-          key: ${{ runner.os }}-docker-cache-${{ hashFiles('Dockerfile', 'entrypoint.sh') }}
+          key: ${{ runner.os }}-docker-cache-${{ hashFiles('Dockerfile', 'run-minidlna') }}
           restore-keys: |
             ${{ runner.os }}-docker-cache-
       - name: Login to Docker Hub
