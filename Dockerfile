@@ -60,7 +60,7 @@ RUN apk add --no-cache jpeg ffmpeg-libs flac libexif libid3tag libintl libvorbis
 COPY --from=minidlna-build /usr/local /usr/local/
 COPY --from=minidlna-build /build/minidlna.conf /etc/
 COPY ./entrypoint.sh /
-HEALTHCHECK --interval=10s --timeout=10s --retries=6 CMD test -f /var/run/minidlna/minidlna.pid
+HEALTHCHECK --interval=10s --timeout=10s --retries=5 CMD test -f /var/run/minidlna/minidlna.pid
 VOLUME /var/cache/minidlna
 ENTRYPOINT ["sh", "/entrypoint.sh"]
 CMD []
