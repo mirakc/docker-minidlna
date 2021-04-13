@@ -1,3 +1,6 @@
+You can see the original patch in the following page:
+https://sourceforge.net/p/minidlna/patches/172/
+
 diff --git a/minidlna.c b/minidlna.c
 index b2769ae..2c50f16 100644
 --- a/minidlna.c
