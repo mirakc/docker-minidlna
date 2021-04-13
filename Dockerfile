@@ -31,7 +31,8 @@ RUN apk add --no-cache \
 RUN curl -fsSL https://sourceforge.net/projects/minidlna/files/minidlna/1.3.0/minidlna-1.3.0.tar.gz/download | tar -xz --strip-components=1
 RUN sh ./autogen.sh
 RUN ./configure --enable-lto
-COPY ./manual-non-destructive-rescan-v1_3_0.patch ./
+COPY ./*-v1_3_0.patch ./
+RUN patch -p1 <dc-date-format-v1_3_0.patch
 RUN patch -p1 <manual-non-destructive-rescan-v1_3_0.patch
 RUN make -j $(nproc)
 RUN make install
