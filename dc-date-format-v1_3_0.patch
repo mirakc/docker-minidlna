@@ -1,25 +1,20 @@
-The original datetime format used in dc:date is not compatible with standard datetime formats like
-below:
-
-  UTC: 2021-04-13T14:39:13Z
-  JST: 2021-04-13T14:39:13+09:00
-
-Kodi doesn't accept an invalid dc:date and ignore it.  As a result, dc:date of every media is
-treated as UNIX Epoch time.
-
 diff --git a/metadata.c b/metadata.c
-index 4781db7..4ae4d64 100644
+index 4781db7..b29e8e1 100644
 --- a/metadata.c
 +++ b/metadata.c
-@@ -1544,9 +1544,9 @@ video_no_dlna:
+@@ -1544,9 +1544,14 @@ video_no_dlna:
  
  	if( !m.date )
  	{
 -		m.date = malloc(20);
--		modtime = localtime(&file.st_mtime);
--		strftime(m.date, 20, "%FT%T", modtime);
 +		m.date = malloc(21);
-+		modtime = gmtime(&file.st_mtime);
+ 		modtime = localtime(&file.st_mtime);
+-		strftime(m.date, 20, "%FT%T", modtime);
++		/*
++		 * This is NOT a correct ISO-8610 format because modtime is a localtime.
++		 * However, at least, Kodi and Regza ZG2 work fine with this format.
++		 * Probably, these devices ignore the timezone in dc:date.
++		 */
 +		strftime(m.date, 21, "%FT%TZ", modtime);
  	}
  
