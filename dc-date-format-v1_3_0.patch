@@ -1,15 +1,22 @@
 diff --git a/metadata.c b/metadata.c
-index 4781db7..b29e8e1 100644
+index 4781db7..09f3636 100644
 --- a/metadata.c
 +++ b/metadata.c
-@@ -1544,9 +1544,14 @@ video_no_dlna:
+@@ -1544,9 +1544,20 @@ video_no_dlna:
  
  	if( !m.date )
  	{
 -		m.date = malloc(20);
-+		m.date = malloc(21);
- 		modtime = localtime(&file.st_mtime);
+-		modtime = localtime(&file.st_mtime);
 -		strftime(m.date, 20, "%FT%T", modtime);
++		m.date = malloc(21);
++		time_t start_time = file.st_mtime;
++		if( vstream && ctx->duration > 0)
++		{
++			/* Compute the start time using the duration. */
++			start_time -= (time_t)(ctx->duration / AV_TIME_BASE);
++		}
++		modtime = localtime(&start_time);
 +		/*
 +		 * This is NOT a correct ISO-8610 format because modtime is a localtime.
 +		 * However, at least, Kodi and Regza ZG2 work fine with this format.
