@@ -1,6 +1,6 @@
 # docker-minidlna
 
-> Multi-Arch MiniDLNA (ReadyMedia) Docker images based on Alpine
+> Multi-Arch MiniDLNA (ReadyMedia) Docker images based on Alpine, dedicated for mirakc/timeshift-fs
 
 ## How to use
 
