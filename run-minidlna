@@ -2,7 +2,7 @@
 
 PIDFILE=/var/run/minidlna/minidlna.pid
 EXTRA_OPTIONS=${MINIDLNAD_EXTRA_OPTIONS:-}
-INTERVAL=${MINIDLNA_REBUILD_INTERVAL:-300}
+INTERVAL=${MINIDLNAD_REBUILD_INTERVAL:-300}
 
 # Remove old pid file if it exists.
 [ -f $PIDFILE ] && rm -f $PIDFILE
