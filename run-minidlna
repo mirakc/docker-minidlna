@@ -1,13 +1,14 @@
 #!/bin/sh -eu
 
 PIDFILE=/var/run/minidlna/minidlna.pid
+EXTRA_OPTIONS=${MINIDLNAD_EXTRA_OPTIONS:-}
 INTERVAL=${MINIDLNA_REBUILD_INTERVAL:-300}
 
 # Remove old pid file if it exists.
 [ -f $PIDFILE ] && rm -f $PIDFILE
 
 # Start a minidlnad in background.
-/usr/local/sbin/minidlnad -f /etc/minidlna.conf -P $PIDFILE -S &
+/usr/local/sbin/minidlnad -f /etc/minidlna.conf -P $PIDFILE -S $EXTRA_OPTIONS &
 
 # Rebuild the index periodically.
 while true;
