@@ -65,6 +65,5 @@ HEALTHCHECK --interval=10s --timeout=10s --retries=5 CMD test -f /var/run/minidl
 VOLUME /var/cache/minidlna
 ENTRYPOINT ["/run-minidlna"]
 CMD []
-ENV MINIDLNA_REBUILD_INTERVAL=300
 EXPOSE 1900/udp
 EXPOSE 8200
