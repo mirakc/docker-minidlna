@@ -5,8 +5,6 @@
 ## How to use
 
 ```yaml
-version: '3.7'
-
 x-environment: &default-environment
   TZ: Asia/Tokyo
 
@@ -25,6 +23,10 @@ services:
     restart: unless-stopped
     cap_add:
       - SYS_ADMIN
+    # In addition, you might have to run with no apparmor security profile
+    # in order to avoid "fusermount3: mount failed: Permission denied".
+    #security_opt:
+    #  - apparmor:unconfined
     devices:
       - /dev/fuse
     volumes:
@@ -43,9 +45,9 @@ services:
       RUST_LOG: info
 
   dlna:
+    container_name: dlna
     depends_on:
       - mirakc-timeshift-fs
-    container_name: dlna
     image: mirakc/minidlna
     init: true
     restart: unless-stopped
