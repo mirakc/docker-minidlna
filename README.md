@@ -1,3 +1,9 @@
+# DO NOT USE THIS REPOSITORY ANYMORE
+
+We stopped maintaining this repository anymore.
+
+Use [mirakc/timeshift-gerbera](https://hub.docker.com/r/mirakc/timeshift-gerbera) instead.
+
 # docker-minidlna
 
 > Multi-Arch MiniDLNA (ReadyMedia) Docker images based on Alpine, dedicated for mirakc/timeshift-fs
